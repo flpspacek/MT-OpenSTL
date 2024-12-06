@@ -223,29 +223,41 @@ def show_taxibj(heatmap, cmap='viridis', title=None, out_path=None, vis_channel=
     else:
         vis_channel = 0
 
+    #ic(1)
     cmap = get_mpl_colormap(cmap)
     ret_img = list()
     if len(heatmap.shape) == 3:
         heatmap = heatmap[np.newaxis, :]
-
+    #ic(2)
     for i in range(heatmap.shape[0]):
         # plot heatmap with cmap
+        #ic(3)
         vis_img = heatmap[i, vis_channel, :, :, np.newaxis]
+        #ic(4)
         vis_img = cv2.resize(np.uint8(255 * vis_img), (256, 256)).squeeze()
+        #ic(5)
         vis_img = cv2.applyColorMap(np.uint8(vis_img), cmap)
+        #ic(6)
         vis_img = np.float32(vis_img) / 255
+        #ic(7)
         vis_img = vis_img / np.max(vis_img)
+        #ic(8)
         vis_img = np.uint8(255 * vis_img)
+        #ic(9)
 
         ret_img.append(vis_img[np.newaxis, :])
+        #ic(10)
         if out_path is not None:
             cv2.imwrite(str(out_path).replace('.', f'{i}.'), vis_img)
         if title is not None:
+            #ic('show')
             imshow(vis_img, win_name=title+str(i))
+
 
     if len(ret_img) > 1:
         return np.concatenate(ret_img, axis=0)
     else:
+        #ic('ret')
         return ret_img[0]
 
 

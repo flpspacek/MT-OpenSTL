@@ -6,7 +6,6 @@ notebook
 pytest 
 pytest-cov
 pytest-runner
-xdoctest >= 0.10.0
+xdoctest
 yapf
-# Note: used for kwarray.group_items, this may be ported to mmcv in the future.
 kwarray

@@ -128,7 +128,9 @@ class BaseExperiment(object):
             _tmp_flag = torch.ones(1, args.total_length - 2, Hp, Wp, Cp).to(device)
             input_dummy = (_tmp_input, _tmp_flag)
         elif args.method == 'prednet':
-           input_dummy = torch.ones(1, 1, C, H, W, requires_grad=True).to(device)
+            input_dummy = torch.ones(1, 1, C, H, W, requires_grad=True).to(device)
+        elif args.method in ['cno', 'fno']:
+            input_dummy = torch.ones(1, C, T, H, W, requires_grad=True).to(device)
         else:
             raise ValueError(f'Invalid method name {args.method}')
 

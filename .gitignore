@@ -121,6 +121,12 @@ workspace/
 tools/exp_bash/
 pretrains
 lightning_logs/
+examples/
+experiments/*
+!experiments/*/*/
+!experiments/*/*/training.ipynb
+user_secrets/
+tools/
 
 # Pytorch
 *.pth
