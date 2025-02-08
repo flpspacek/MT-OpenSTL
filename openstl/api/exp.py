@@ -131,6 +131,8 @@ class BaseExperiment(object):
             input_dummy = torch.ones(1, 1, C, H, W, requires_grad=True).to(device)
         elif args.method in ['cno', 'fno']:
             input_dummy = torch.ones(1, C, T, H, W, requires_grad=True).to(device)
+        elif args.method in ['cnolstm', 'fnolstm']:
+            input_dummy = torch.ones(1, C, self.args.in_T, H, W).to(device)
         else:
             raise ValueError(f'Invalid method name {args.method}')
 

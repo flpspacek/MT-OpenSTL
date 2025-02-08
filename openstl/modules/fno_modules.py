@@ -195,7 +195,7 @@ class FNOBlock(nn.Module):
 
         # Aggregation
         if self.model_type == 'skip':
-            x = self.spec_conv.transform(x, output_shape) + x_fno_skip + x_fno
+            x = self.spec_conv.transform(x, output_shape) + (x_fno_skip + x_fno) # + +
         else:
             x = x_fno_skip + x_fno
 
@@ -249,6 +249,7 @@ class ChannelMLP(nn.Module):
         #ic('Reshaped', x.shape)
 
         for i, layer in enumerate(self.nn):
+            #ic(layer)
             x = layer(x)
             if i < self.n_layers - 1:
                 x = self.activation(x)

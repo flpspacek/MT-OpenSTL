@@ -2,8 +2,10 @@
 
 from .convlstm import ConvLSTM
 from .cno import CNO
+from .cnolstm import CNOLSTM
 from .e3dlstm import E3DLSTM
 from .fno import FNO
+from .fnolstm import FNOLSTM
 from .mau import MAU
 from .mim import MIM
 from .phydnet import PhyDNet
@@ -19,8 +21,10 @@ from .wast import WaST
 method_maps = {
     'convlstm': ConvLSTM,
     'cno': CNO,
+    'cnolstm': CNOLSTM,
     'e3dlstm': E3DLSTM,
     'fno': FNO,
+    'fnolstm': FNOLSTM,
     'mau': MAU,
     'mim': MIM,
     'phydnet': PhyDNet,
@@ -37,7 +41,7 @@ method_maps = {
 }
 
 __all__ = [
-    'method_maps', 'ConvLSTM', 'CNO', 'E3DLSTM', 'FNO', 'MAU', 'MIM',
+    'method_maps', 'ConvLSTM', 'CNO', 'CNOLSTM', 'E3DLSTM', 'FNO', 'FNOLSTM', 'MAU', 'MIM',
     'PredRNN', 'PredRNNpp', 'PredRNNv2', 'PhyDNet', 'SimVP', 'TAU',
     "MMVP", 'SwinLSTM_D', 'SwinLSTM_B', 'WaST'
 ]

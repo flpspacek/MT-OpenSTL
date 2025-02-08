@@ -12,12 +12,13 @@ import torch.nn.functional as F
 from openstl.modules import CNOBlock, LiftProjectBlock, ResNet
 
     
-class CNO3d_Model(nn.Module):
+class CNO_Model(nn.Module):
     '''
     - Assumes equal size of spatial dimensions
     '''
 
     def __init__(self,
+                dim,                       # Dimension of input 2 for spatial 3 for spatio-temporal  
                 in_dim,                    # Number of input channels.
                 out_dim,                   # Number of input channels.
                 size,                      # Input and Output spatial size (required )
@@ -29,8 +30,11 @@ class CNO3d_Model(nn.Module):
                 **kwargs
                 ):
 
-        super(CNO3d_Model, self).__init__()
+        super(CNO_Model, self).__init__()
 
+        if dim != 2 and dim != 3:
+            raise ValueError('Invalid dimension of imput. Valid options are 2 or 3!')
+        self.dim = dim
         self.N_layers = int(N_layers)         # Number od (D) & (U) Blocks
         self.lift_dim = channel_multiplier//2 # Input is lifted to the half of channel_multiplier dimension
         self.in_dim   = in_dim
@@ -64,17 +68,20 @@ class CNO3d_Model(nn.Module):
 
         ######## Define Lift and Project blocks ########
 
-        self.lift   = LiftProjectBlock(in_channels = in_dim,
-                                        out_channels = self.encoder_features[0],
-                                        size = size)
+        self.lift   = LiftProjectBlock(dim=self.dim,
+                                       in_channels = in_dim,
+                                       out_channels = self.encoder_features[0],
+                                       size = size)
 
-        self.project   = LiftProjectBlock(in_channels = self.encoder_features[0] + self.decoder_features_out[-1],
-                                            out_channels = out_dim,
-                                            size = size)
+        self.project   = LiftProjectBlock(dim=self.dim,
+                                          in_channels = self.encoder_features[0] + self.decoder_features_out[-1],
+                                          out_channels = out_dim,
+                                          size = size)
 
         ######## Define Encoder, ED Linker and Decoder networks ########
 
-        self.encoder         = nn.ModuleList([(CNOBlock(in_channels  = self.encoder_features[i],
+        self.encoder         = nn.ModuleList([(CNOBlock(dim          = self.dim,
+                                                        in_channels  = self.encoder_features[i],
                                                         out_channels = self.encoder_features[i+1],
                                                         in_size      = self.encoder_sizes[i],
                                                         out_size     = self.encoder_sizes[i+1],
@@ -83,18 +90,20 @@ class CNO3d_Model(nn.Module):
 
         # After the ResNets are executed, the sizes of encoder and decoder might not match (if out_size>1)
         # We must ensure that the sizes are the same, by aplying CNO Blocks
-        self.ED_expansion     = nn.ModuleList([(CNOBlock(in_channels = self.encoder_features[i],
-                                                        out_channels = self.encoder_features[i],
-                                                        in_size      = self.encoder_sizes[i],
-                                                        out_size     = self.decoder_sizes[self.N_layers - i],
-                                                        use_bn       = use_bn))
+        self.ED_expansion     = nn.ModuleList([(CNOBlock(dim          = self.dim,
+                                                         in_channels  = self.encoder_features[i],
+                                                         out_channels = self.encoder_features[i],
+                                                         in_size      = self.encoder_sizes[i],
+                                                         out_size     = self.decoder_sizes[self.N_layers - i],
+                                                         use_bn       = use_bn))
                                                 for i in range(self.N_layers + 1)])
         
-        self.decoder         = nn.ModuleList([(CNOBlock(in_channels  = self.decoder_features_in[i],
-                                                            out_channels = self.decoder_features_out[i],
-                                                            in_size      = self.decoder_sizes[i],
-                                                            out_size     = self.decoder_sizes[i+1],
-                                                            use_bn       = use_bn))
+        self.decoder         = nn.ModuleList([(CNOBlock(dim          = self.dim,
+                                                        in_channels  = self.decoder_features_in[i],
+                                                        out_channels = self.decoder_features_out[i],
+                                                        in_size      = self.decoder_sizes[i],
+                                                        out_size     = self.decoder_sizes[i+1],
+                                                        use_bn       = use_bn))
                                                     for i in range(self.N_layers)])
 
         #### Define ResNets Blocks 
@@ -110,15 +119,17 @@ class CNO3d_Model(nn.Module):
 
         # Define the ResNet networks (before the neck)
         for l in range(self.N_layers):
-            self.res_nets.append(ResNet(channels = self.encoder_features[l],
+            self.res_nets.append(ResNet(dim          = self.dim,
+                                        channels = self.encoder_features[l],
                                         size = self.encoder_sizes[l],
                                         num_blocks = self.N_res,
                                         use_bn = use_bn))
             
-        self.res_net_neck = ResNet(channels = self.encoder_features[self.N_layers],
-                                    size = self.encoder_sizes[self.N_layers],
-                                    num_blocks = self.N_res_neck,
-                                    use_bn = use_bn)
+        self.res_net_neck = ResNet(dim          = self.dim,
+                                   channels = self.encoder_features[self.N_layers],
+                                   size = self.encoder_sizes[self.N_layers],
+                                   num_blocks = self.N_res_neck,
+                                   use_bn = use_bn)
 
         self.res_nets = torch.nn.Sequential(*self.res_nets)
 

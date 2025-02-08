@@ -67,6 +67,7 @@ class FNO_Model(nn.Module):
         """
         - Expecting out_shape >= in_shape
         """
+        #ic('input:', x.shape)
         if output_shape is None:
             out_shapes = self.n_layers * [None]
         # Calculate output shape for each layer so it gradually gets closer to the desired output shape
@@ -79,15 +80,19 @@ class FNO_Model(nn.Module):
             # Last shape have to match the final output shape
             out_shapes.append(output_shape)
 
-        #ic(output_shape)
-        #ic(out_shapes)
+        ##ic(output_shape)
+        ##ic(out_shapes)
+        #ic('lifting')
         x = self.lifting(x)
+        #ic('lifted', x.shape)
 
         for layer_idx in range(self.n_layers):
+            #ic('Fourier layer: ', layer_idx)
             x = self.fourier_layers[layer_idx](x, layer_idx, out_shapes[layer_idx])
-            #ic(x.shape)
-        
+            ##ic(x.shape)
+        #ic('projection')
         x = self.projection(x)
 
+        #ic('return', x.shape)
         return x
 

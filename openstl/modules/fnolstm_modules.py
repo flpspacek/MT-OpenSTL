@@ -1,0 +1,62 @@
+from typing import Union
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch
+
+from openstl.models.fno_model import FNO_Model
+
+
+class FNOLSTMCell(nn.Module):
+    '''
+    - Linear projection messes up the discretization invariance
+    '''
+    def __init__(self, fno_block_args: dict, in_channels: int, num_hidden: int, n_layers: int=1) -> None:
+        super(FNOLSTMCell, self).__init__()
+
+        self.num_hidden = num_hidden
+        self.n_layers = n_layers
+        self.FNO_block = FNO_Model(**fno_block_args)
+        self.LP = nn.Conv2d(in_channels+num_hidden, num_hidden, 1, 1, padding=0, bias=False)
+        self.tanh_gate = F.tanh
+        self.sigmoid_gate = F.sigmoid
+
+    def forward(self, x_t, h_t, c_t) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if h_t is None:
+            B, C, H, W = x_t.shape
+            h_t = torch.zeros(B, self.num_hidden, H, W).to(x_t.device)
+        if c_t is None:
+            B, C, H, W = x_t.shape
+            c_t = torch.zeros(B, self.num_hidden, H, W).to(x_t.device)
+
+        # Add the hidden state as another channel
+        x = torch.concat((x_t, h_t), dim=1)
+
+        # Do the linear transformation
+        #ic(x_t.shape)
+        #ic(x.shape)
+        x = self.LP(x)
+
+        # FNO block
+        fno_out = self.FNO_block(x)
+        #ic(fno_out.shape)
+
+        # Pass the output of FNO block through tanh and add it to the last cell state    
+        cell = self.tanh_gate(fno_out)
+        
+        # Pass the output of FNO block through sigmoid
+        F_t = self.sigmoid_gate(fno_out)
+
+        # Multiply tanh of new cell state with sigmoid of FNO block output to obtain new hidden state
+        c_t1 = F_t * (c_t + cell)
+        h_t1 = F_t * self.tanh_gate(c_t1)
+
+        # Return new states
+        #ic(c_t1.shape)
+        #ic(h_t1.shape)
+
+        #output = self.sigmoid_gate(h_t1)
+
+        return c_t1, h_t1
+    

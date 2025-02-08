@@ -12,6 +12,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class CNO2D_LReLu(nn.Module):
+    def __init__(self,
+                in_size: tuple[int, int],
+                out_size: tuple[int, int]
+                ):
+        super(CNO2D_LReLu, self).__init__()
+
+        self.in_size = in_size
+        self.out_size = out_size
+        self.act = nn.LeakyReLU()
+
+    def forward(self, x):
+        x = F.interpolate(x, size = (2 * self.in_size[0], 2 * self.in_size[1]), mode = "bicubic", antialias = True)
+        x = self.act(x)
+        x = F.interpolate(x, size = (self.out_size[0], self.out_size[1]), mode = "bicubic", antialias = True)
+
+        return x
+
 
 class CNO3D_LReLu(nn.Module):
     '''
@@ -71,6 +89,7 @@ class CNO3D_LReLu(nn.Module):
 
 class CNOBlock(nn.Module):
     def __init__(self,
+                dim,
                 in_channels,
                 out_channels,
                 in_size,
@@ -83,16 +102,22 @@ class CNOBlock(nn.Module):
         self.out_channels = out_channels
         self.in_size  = in_size
         self.out_size = out_size
-        self.convolution = torch.nn.Conv3d(in_channels   = self.in_channels,
-                                            out_channels = self.out_channels,
-                                            kernel_size  = 3,
-                                            padding      = 1)
+        if dim == 2:
+            self.convolution = nn.Conv2d(in_channels  = self.in_channels,
+                                         out_channels = self.out_channels,
+                                         kernel_size  = 3,
+                                         padding      = 1)
+        elif dim == 3:
+            self.convolution = nn.Conv3d(in_channels  = self.in_channels,
+                                         out_channels = self.out_channels,
+                                         kernel_size  = 3,
+                                         padding      = 1)
 
         if use_bn:
-            self.batch_norm  = nn.BatchNorm3d(self.out_channels)
+            self.batch_norm  = nn.BatchNorm2d(self.out_channels) if dim == 2 else nn.BatchNorm3d(self.out_channels)
         else:
             self.batch_norm  = nn.Identity()
-        self.act = CNO3D_LReLu(in_size = self.in_size, out_size = self.out_size)
+        self.act = CNO2D_LReLu(in_size = self.in_size, out_size = self.out_size) if dim == 2 else CNO3D_LReLu(in_size = self.in_size, out_size = self.out_size)
 
     def forward(self, x):
         x = self.convolution(x)
@@ -103,6 +128,7 @@ class CNOBlock(nn.Module):
 
 class LiftProjectBlock(nn.Module):
     def __init__(self,
+                dim,
                 in_channels,
                 out_channels,
                 size,
@@ -110,16 +136,22 @@ class LiftProjectBlock(nn.Module):
                 ):
         super(LiftProjectBlock, self).__init__()
 
-        self.inter_CNOBlock = CNOBlock(in_channels       = in_channels,
-                                        out_channels     = latent_dim,
-                                        in_size          = size,
-                                        out_size         = size,
-                                        use_bn           = False)
-
-        self.convolution = torch.nn.Conv3d(in_channels   = latent_dim,
-                                            out_channels = out_channels,
-                                            kernel_size  = 3,
-                                            padding      = 1)
+        self.inter_CNOBlock = CNOBlock(dim              = dim,
+                                       in_channels      = in_channels,
+                                       out_channels     = latent_dim,
+                                       in_size          = size,
+                                       out_size         = size,
+                                       use_bn           = False)
+        if dim == 2:
+            self.convolution = torch.nn.Conv2d(in_channels  = latent_dim,
+                                               out_channels = out_channels,
+                                               kernel_size  = 3,
+                                               padding      = 1)
+        elif dim == 3:
+            self.convolution = torch.nn.Conv3d(in_channels  = latent_dim,
+                                               out_channels = out_channels,
+                                               kernel_size  = 3,
+                                               padding      = 1)
 
 
     def forward(self, x):
@@ -130,6 +162,7 @@ class LiftProjectBlock(nn.Module):
 
 class ResidualBlock(nn.Module):
     def __init__(self,
+                dim,
                 channels,
                 size,
                 use_bn = True
@@ -139,25 +172,34 @@ class ResidualBlock(nn.Module):
         self.channels = channels
         self.size     = size
 
-        self.convolution1 = torch.nn.Conv3d(in_channels = self.channels,
-                                            out_channels= self.channels,
-                                            kernel_size = 3,
-                                            padding     = 1)
-        self.convolution2 = torch.nn.Conv3d(in_channels = self.channels,
-                                            out_channels= self.channels,
-                                            kernel_size = 3,
-                                            padding     = 1)
+        if dim == 2:
+            self.convolution1 = torch.nn.Conv2d(in_channels = self.channels,
+                                                out_channels= self.channels,
+                                                kernel_size = 2,
+                                                padding     = 1)
+            self.convolution2 = torch.nn.Conv2d(in_channels = self.channels,
+                                                out_channels= self.channels,
+                                                kernel_size = 3,
+                                                padding     = 1)
+        elif dim == 3:
+            self.convolution1 = torch.nn.Conv3d(in_channels = self.channels,
+                                                out_channels= self.channels,
+                                                kernel_size = 3,
+                                                padding     = 1)
+            self.convolution2 = torch.nn.Conv3d(in_channels = self.channels,
+                                                out_channels= self.channels,
+                                                kernel_size = 3,
+                                                padding     = 1)
 
         if use_bn:
-            self.batch_norm1  = nn.BatchNorm3d(self.channels)
-            self.batch_norm2  = nn.BatchNorm3d(self.channels)
+            self.batch_norm1  = nn.BatchNorm2d(self.channels) if dim == 2 else nn.BatchNorm3d(self.channels)
+            self.batch_norm2  = nn.BatchNorm2d(self.channels) if dim == 2 else nn.BatchNorm3d(self.channels)
 
         else:
             self.batch_norm1  = nn.Identity()
             self.batch_norm2  = nn.Identity()
 
-        self.act           = CNO3D_LReLu(in_size  = self.size,
-                                        out_size = self.size)
+        self.act = CNO2D_LReLu(in_size  = self.size, out_size = self.size) if dim == 2 else CNO3D_LReLu(in_size  = self.size, out_size = self.size)
         
     def forward(self, x):
         out = self.convolution1(x)
@@ -170,6 +212,7 @@ class ResidualBlock(nn.Module):
     
 class ResNet(nn.Module):
     def __init__(self,
+                dim,
                 channels,
                 size,
                 num_blocks,
@@ -183,9 +226,10 @@ class ResNet(nn.Module):
 
         self.res_nets = []
         for _ in range(self.num_blocks):
-            self.res_nets.append(ResidualBlock(channels = channels,
-                                                size = size,
-                                                use_bn = use_bn))
+            self.res_nets.append(ResidualBlock(dim = dim,
+                                               channels = channels,
+                                               size = size,
+                                               use_bn = use_bn))
 
         self.res_nets = torch.nn.Sequential(*self.res_nets)
 

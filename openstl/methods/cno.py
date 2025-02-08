@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from .base_method import Base_method
-from openstl.models import CNO3d_Model
+from openstl.models import CNO_Model
 
 from torchmetrics import MetricCollection
 from torchmetrics.regression import MeanAbsoluteError, MeanSquaredError
@@ -20,7 +20,7 @@ class CNO(Base_method):
     
     def _build_model(self, **kwargs) -> nn.Module:
 
-        return CNO3d_Model(**kwargs)
+        return CNO_Model(**kwargs)
 
     def forward(self, batch_x, batch_y=None, **kwargs):
         '''
@@ -69,7 +69,7 @@ class CNO(Base_method):
         batch_x = batch_x.permute(0, 2, 1, 3, 4)
         batch_y = batch_y.permute(0, 2, 1, 3, 4)
         pred_y = self(batch_x, batch_y)
-        outputs = {'inputs': batch_x.permute(0, 2, 1, 3, 4).cpu().numpy(), 'preds': pred_y.permute(0, 2, 1, 3, 4).cpu().numpy(), 'trues': batch_y.permute(0, 2, 1, 3, 4).cpu().numpy()}
+        outputs = {'inputs': batch_x.permute(0, 2, 1, 3, 4).float().cpu().numpy(), 'preds': pred_y.permute(0, 2, 1, 3, 4).float().cpu().numpy(), 'trues': batch_y.permute(0, 2, 1, 3, 4).float().cpu().numpy()}
         self.test_outputs.append(outputs)
 
         return outputs

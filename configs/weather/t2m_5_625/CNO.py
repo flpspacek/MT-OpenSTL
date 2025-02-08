@@ -3,9 +3,9 @@ model_type = 'CNO'
 precision = 'bf16-mixed'
 # model
 dim = 3
-in_dim = 1
-out_dim = 1
-size = (10, 64, 64)
+in_dim = 2
+out_dim = 2
+size = (4, 32, 32)
 N_layers = 4
 N_res = 4
 N_res_neck = 4
