@@ -27,6 +27,7 @@ class FNO_Model(nn.Module):
                  activation: nn.Module=F.gelu,
                  channel_mlp_expansion: float=0.5,
                  channel_mlp_dropout: float=0.0,
+                 use_self_attention: bool=False,
                  **kwargs) -> None:
         super(FNO_Model, self).__init__()
 
@@ -48,6 +49,7 @@ class FNO_Model(nn.Module):
         self.model_type = model_type.lower()
         self.channel_mlp_expansion = channel_mlp_expansion
         self.channel_mlp_dropout = channel_mlp_dropout
+        self.use_self_attention = use_self_attention
 
         #ic(self.n_modes)
 
@@ -59,7 +61,7 @@ class FNO_Model(nn.Module):
         # Lift to higher dimension
         self.lifting = ChannelMLP(in_channels=self.in_channels, out_channels=self.hidden_channels, hidden_channels=self.lifting_channels, n_layers=2, activation=self.activation)
         # n_layers of intergral operators and activation functions
-        self.fourier_layers = nn.ModuleList([FNOBlock(model_type=self.model_type, n_modes=self.n_modes, hidden_channels=hidden_channels, n_layers=self.n_layers, activation=self.activation, channel_mlp_expansion=self.channel_mlp_expansion, channel_mlp_dropout=self.channel_mlp_dropout) for _ in range(n_layers)])
+        self.fourier_layers = nn.ModuleList([FNOBlock(model_type=self.model_type, n_modes=self.n_modes, hidden_channels=hidden_channels, n_layers=self.n_layers, activation=self.activation, channel_mlp_expansion=self.channel_mlp_expansion, channel_mlp_dropout=self.channel_mlp_dropout, use_self_attention=(self.use_self_attention and (i==n_layers-1))) for i in range(n_layers)])
         # Back to target dimension
         self.projection = ChannelMLP(in_channels=self.hidden_channels, out_channels=self.out_channels, hidden_channels=self.projection_channels, n_layers=2, activation=self.activation)
 

@@ -5,6 +5,7 @@ precision = 'bf16-mixed'
 in_T = 4
 in_channels = 2
 num_hidden = 32
+n_layers = 1
 cno_block_args = {
 'dim': 2,
 'in_dim': num_hidden,

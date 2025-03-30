@@ -47,11 +47,11 @@ class CNO(Base_method):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        batch_x, batch_y = batch
-        batch_x = batch_x.permute(0, 2, 1, 3, 4)
-        batch_y = batch_y.permute(0, 2, 1, 3, 4)
+        batch_x, batch_y = batch # B, T, C, S1, S2
+        batch_x = batch_x.permute(0, 2, 1, 3, 4) # B, C, T, S1, S2
+        batch_y = batch_y.permute(0, 2, 1, 3, 4) # B, C, T, S1, S2
    
-        pred_y = self(batch_x, batch_y)
+        pred_y = self(batch_x, batch_y) # B, C, T, S1, S2
         loss = self.criterion(pred_y, batch_y)
 
         metrics = MetricCollection({
@@ -59,16 +59,21 @@ class CNO(Base_method):
             "val_mae": MeanAbsoluteError(),
         })
 
-        metrics_eval =  metrics(pred_y.cpu().flatten(), batch_y.cpu().flatten()) #metrics(pred_y.flatten().to(self.device), batch_y.flatten().to(self.device))
+        metrics_eval =  metrics(pred_y.permute(0, 2, 1, 3, 4).cpu().flatten(), batch_y.permute(0, 2, 1, 3, 4).cpu().flatten()) 
 
         self.log_dict(metrics_eval, on_step=True, on_epoch=True, prog_bar=False)
         self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=False)
 
     def test_step(self, batch, batch_idx):
-        batch_x, batch_y = batch
-        batch_x = batch_x.permute(0, 2, 1, 3, 4)
-        batch_y = batch_y.permute(0, 2, 1, 3, 4)
-        pred_y = self(batch_x, batch_y)
+        #ic(type(batch))
+        #ic(len(batch))
+        #(ic(batch[0].shape))
+        #(ic(batch[1].shape))
+
+        batch_x, batch_y = batch[0], batch[1] # B, T, C, S1, S2
+        batch_x = batch_x.permute(0, 2, 1, 3, 4) # B, C, T, S1, S2
+        batch_y = batch_y.permute(0, 2, 1, 3, 4) # B, C, T, S1, S2
+        pred_y = self(batch_x, batch_y) # B, C, T, S1, S2
         outputs = {'inputs': batch_x.permute(0, 2, 1, 3, 4).float().cpu().numpy(), 'preds': pred_y.permute(0, 2, 1, 3, 4).float().cpu().numpy(), 'trues': batch_y.permute(0, 2, 1, 3, 4).float().cpu().numpy()}
         self.test_outputs.append(outputs)
 

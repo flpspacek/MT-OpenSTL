@@ -14,6 +14,88 @@ from icecream import ic
 # - Testing
 # - Redundant parameters from last FFT
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class LinearSelfAttention(nn.Module):
+    def __init__(self, embed_dim: int, k: int=32, delta: float=0.1):
+        super(LinearSelfAttention, self).__init__()
+        self.embed_dim = embed_dim
+        self.delta = delta
+        self.k = k
+
+        # Learnable linear projections for Query, Key, Value
+        self.W_f = nn.Conv1d(embed_dim, embed_dim, 1, bias=False)
+        self.W_g = nn.Conv1d(embed_dim, embed_dim, 1, bias=False)
+        self.W_h = nn.Conv1d(embed_dim, embed_dim, 1, bias=False)
+        
+        # Lazy initialization of projection matrices
+        self.register_buffer('P1', None)
+        self.register_buffer('P2', None)
+
+    def _initialize_projection_matrices(self, n):
+            """
+            Initialize projection matrices P1 and P2 if not already initialized
+            Args:
+                n: Input sequence length (T*S1*S2 for 3D)
+            """
+            if self.P1 is None or self.P2 is None:
+                # Generate random matrix R with Gaussian distribution
+                R = torch.randn(self.k, n) / (self.k ** 0.5)
+                
+                # Create projection matrices P1 and P2
+                self.P1 = self.delta * R
+                self.P2 = torch.exp(-self.delta * R)
+
+    def forward(self, x):
+        """
+        x: (batch_size, seq_len, embed_dim)
+        Returns: (batch_size, seq_len, embed_dim)
+        """
+        reshaped = False
+        shape = x.shape
+        N = torch.prod(torch.tensor(x.shape[2:]))
+
+        # Reshape if needed
+        if x.ndim > 3:
+            x = x.view((shape[0], shape[1], -1)) # batch_size, channels (embed_dim), N (temp*spat1*spat2)
+            reshaped = True
+
+        # Initialize projection matrices if needed
+        self._initialize_projection_matrices(N)
+
+        Q = self.W_f(x)  # (B, C, N)
+        K = self.W_g(x)  # (B, C, N)
+        V = self.W_h(x)  # (B, C, N)
+
+        # Project K and V using P1 and P2
+        # Move projection matrices to the same device as input
+        P1 = self.P1.to(x.device)
+        P2 = self.P2.to(x.device)
+        
+        # Projected key and value: [B, C, k]
+        K_projected = torch.matmul(K, P1.t())  # EKWg
+        V_projected = torch.matmul(V, P2.t())  # FVWh
+        
+        scale = torch.sqrt(torch.tensor(self.embed_dim, dtype=torch.float32))
+        attention_scores = torch.matmul(Q.permute((0, 2, 1)), K_projected) / scale  # [B, N, k]
+        
+        #ic(x.shape)
+        #ic(attention_scores.shape)
+        # Apply softmax
+        attention_weights = F.softmax(attention_scores, dim=-1)
+        
+        # Compute output
+        x = torch.matmul(attention_weights, V_projected.transpose(-2, -1))  # [B, N, C]
+ 
+        if reshaped:
+            x = x.view((shape[0], self.embed_dim, *shape[2:])) # (B, C, T, S1, S2)
+
+        return x
+
+
 class SpectralConv(nn.Module):
     """
     - Expecting only real-valued inputs
@@ -22,7 +104,7 @@ class SpectralConv(nn.Module):
     - Using all n_modes
     """
 
-    def __init__(self, channels: int, n_modes: Union[int, tuple[int, ...]]) -> None:
+    def __init__(self, channels: int, n_modes: Union[int, tuple[int, ...]], fno_block_precision='full') -> None:
         super(SpectralConv, self).__init__()
 
         #self.in_channels = channels
@@ -158,7 +240,8 @@ class FNOBlock(nn.Module):
                  n_layers: int,
                  activation: nn.Module=F.gelu,
                  channel_mlp_expansion: float=0.5,
-                 channel_mlp_dropout: float=0.0) -> None:
+                 channel_mlp_dropout: float=0.0,
+                 use_self_attention: bool=False,) -> None:
         
         super(FNOBlock, self).__init__()
 
@@ -172,6 +255,11 @@ class FNOBlock(nn.Module):
             self.channel_mlp = ChannelMLP(in_channels=hidden_channels, out_channels=hidden_channels, hidden_channels=round(hidden_channels*channel_mlp_expansion), dropout=channel_mlp_dropout)
         else:
             self.channel_mlp = None
+
+        if use_self_attention:
+            self.lin_self_attention = LinearSelfAttention(hidden_channels)
+        else:
+            self.lin_self_attention = None
     
     def _skip_connection(self, x: torch.Tensor) -> torch.Tensor:
         shape = x.shape
@@ -192,6 +280,9 @@ class FNOBlock(nn.Module):
 
         if self.channel_mlp is not None:
             x_fno = self.channel_mlp(x_fno)
+
+        if self.lin_self_attention is not None:
+            x_fno = self.lin_self_attention(x_fno)
 
         # Aggregation
         if self.model_type == 'skip':
