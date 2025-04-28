@@ -68,7 +68,7 @@ class FNO(Base_method):
             "val_mae": MeanAbsoluteError(),
         })
 
-        metrics_eval =  metrics(pred_y.cpu().flatten(), batch_y.cpu().flatten()) #metrics(pred_y.flatten().to(self.device), batch_y.flatten().to(self.device))
+        metrics_eval =  metrics(pred_y.detach().cpu().flatten(), batch_y.detach().cpu().flatten()) #metrics(pred_y.flatten().to(self.device), batch_y.flatten().to(self.device))
 
         self.log_dict(metrics_eval, on_step=True, on_epoch=True, prog_bar=False)
         self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=False)

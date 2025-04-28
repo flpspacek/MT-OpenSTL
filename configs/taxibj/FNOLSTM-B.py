@@ -8,13 +8,13 @@ fno_block_args = {
     'model_type': 'skip',
     'in_channels': num_hidden,
     'out_channels': num_hidden,
-    'hidden_channels': 64,
+    'hidden_channels': 256,
     'n_modes': (16, 16),
-    'n_layers': 4,
+    'n_layers': 6,
     'ndim': 2,
 }
 # training
-lr = 5e-3
+lr = 2e-3
 batch_size = 32
 sched = 'cosine'
 opt = 'adamw'

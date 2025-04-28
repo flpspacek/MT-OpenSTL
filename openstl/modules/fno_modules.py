@@ -102,13 +102,17 @@ class SpectralConv(nn.Module):
     - Expecting in_channels == out_channels
     - No trainable bias parameter
     - Using all n_modes
+    - Precision: ['half', 'mixed', 'full']
     """
 
-    def __init__(self, channels: int, n_modes: Union[int, tuple[int, ...]], fno_block_precision='full') -> None:
+    def __init__(self, channels: int, n_modes: Union[int, tuple[int, ...]], precision='full') -> None:
         super(SpectralConv, self).__init__()
 
         #self.in_channels = channels
         #self.out_channels = channels # TODO
+
+        # Precision
+        self.fno_block_precision = precision
 
         # Setup modes for n dimension
         self.n_modes = n_modes
@@ -118,7 +122,7 @@ class SpectralConv(nn.Module):
         R_shape = (channels, *self.n_modes)
         # Initialize the weight matrix
         init_std = (1 / (channels))**0.5
-        self.R = torch.normal(0, init_std, R_shape, dtype=torch.float32)
+        self.R = torch.normal(0, init_std, R_shape, dtype=torch.cfloat)
         # TODO Param or not??
         self.R = nn.Parameter(self.R)
         #ic(n_modes)
@@ -183,11 +187,18 @@ class SpectralConv(nn.Module):
         #fft_size = list(mode_sizes)
         fft_dims = list(range(-self.order, 0))
 
-        #ic(x.shape)
+        if self.fno_block_precision == "half":
+            x = x.half()
+
         # Compute Fourier coefficients
         x = torch.fft.rfftn(x, norm="forward", dim=fft_dims)
         if self.order > 1:
             x = torch.fft.fftshift(x, dim=fft_dims[:-1])
+
+        if self.fno_block_precision == "mixed":
+            # if 'mixed', the above fft runs in full precision, but the
+            # following operations run at half precision
+            x = x.chalf()
 
         # Get relevant fourier modes
         slices_x = [slice(None), slice(None)]
@@ -241,7 +252,8 @@ class FNOBlock(nn.Module):
                  activation: nn.Module=F.gelu,
                  channel_mlp_expansion: float=0.5,
                  channel_mlp_dropout: float=0.0,
-                 use_self_attention: bool=False,) -> None:
+                 use_self_attention: bool=False,
+                 precision: str='mixed') -> None:
         
         super(FNOBlock, self).__init__()
 
@@ -249,7 +261,7 @@ class FNOBlock(nn.Module):
         self.n_layers = n_layers
         self.activation = activation
 
-        self.spec_conv = SpectralConv(channels=hidden_channels, n_modes=n_modes)
+        self.spec_conv = SpectralConv(channels=hidden_channels, n_modes=n_modes, precision=precision)
         self.W = nn.Conv1d(in_channels=hidden_channels, out_channels=hidden_channels, kernel_size=1)
         if model_type in ['mlp', 'skip']:
             self.channel_mlp = ChannelMLP(in_channels=hidden_channels, out_channels=hidden_channels, hidden_channels=round(hidden_channels*channel_mlp_expansion), dropout=channel_mlp_dropout)

@@ -1,11 +1,11 @@
 method = 'fno'
-model_type = 'FNO'
+precision = '32'
 # model
-model_type = 'mlp'
+model_type = 'skip'
 in_channels = 1
 out_channels = 1
 hidden_channels = 256
-n_modes = (4, 8, 8)
+n_modes = (4, 16, 16)
 n_layers = 4
 ndim = 3
 # training

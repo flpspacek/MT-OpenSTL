@@ -50,7 +50,7 @@ class FNOLSTM(Base_method):
         total_epochs = self.trainer.max_epochs
         #ic(current_epoch)
         #ic(total_epochs)
-        teacher_forcing_prob = self._get_teacher_forcing_prob(current_epoch, total_epochs, initial_epochs=20, final_epochs=20)
+        teacher_forcing_prob = self._get_teacher_forcing_prob(current_epoch, total_epochs, initial_epochs=10, final_epochs=20)
         out = self.model(batch_in, teacher_forcing_prob=teacher_forcing_prob)
         loss = self.criterion(out, batch_in[:, :, 1:])
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)

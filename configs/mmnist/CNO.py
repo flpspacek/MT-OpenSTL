@@ -12,7 +12,7 @@ N_res_neck = 4
 channel_multiplier = 16
 use_bn = False
 # training
-lr = 1e-3
+lr = 5e-4
 batch_size = 32
 sched = 'cosine'
 warmup_epoch = 5

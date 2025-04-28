@@ -86,7 +86,7 @@ class CNOLSTM(Base_method):
         len_y = batch_y.shape[2]
         batch_in = torch.cat((batch_x, batch_y), axis=2)
         pred_y = self.model(batch_in, teacher_forcing_prob=0.0)
-        outputs = {'inputs': batch_x.permute(0, 2, 1, 3, 4).cpu().numpy(), 'preds': pred_y[:, :, -len_y:].permute(0, 2, 1, 3, 4).cpu().numpy(), 'trues': batch_y.permute(0, 2, 1, 3, 4).cpu().numpy()}
+        outputs = {'inputs': batch_x.permute(0, 2, 1, 3, 4).cpu().float().numpy(), 'preds': pred_y[:, :, -len_y:].permute(0, 2, 1, 3, 4).cpu().float().numpy(), 'trues': batch_y.permute(0, 2, 1, 3, 4).cpu().float().numpy()}
         self.test_outputs.append(outputs)
 
         return outputs

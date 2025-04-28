@@ -14,7 +14,9 @@ class CustomExperiment(BaseExperiment):
                 accelerator='gpu',  # Use distributed data parallel
                 callbacks=callbacks,
                 precision=args.precision,
-                logger=self._init_logger(args)
+                logger=self._init_logger(args),
+                limit_train_batches=1.0,
+                limit_val_batches=1.0,
             )
     
     def _init_logger(self, args):

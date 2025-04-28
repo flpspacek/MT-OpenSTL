@@ -8,9 +8,9 @@ hidden_channels = 256
 n_modes = (2, 16, 16)
 n_layers = 6
 ndim = 3
-use_self_attention = True
+use_self_attention = False
 # training
-lr = 1e-5
+lr = 1e-3
 batch_size = 32
 sched = 'cosine'
 opt = 'adamw'
