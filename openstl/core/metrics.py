@@ -243,16 +243,19 @@ def metric(pred, true, mean=None, std=None, metrics=['mae', 'mse'],
     pred = np.maximum(pred, clip_range[0])
     pred = np.minimum(pred, clip_range[1])
     if 'ssim' in metrics:
-        ssim = 0
+        #ssim = 0
         #for b in range(pred.shape[0]):
         #    for f in range(pred.shape[1]):
-        #        ssim += cal_ssim(pred[b, f].swapaxes(0, 2),
-        #                         true[b, f].swapaxes(0, 2), multichannel=True)
+        #        for c in range(pred.shape[2]):
+        #            ssim += SSIM(pred[b, f, c], true[b, f, c])
+        #eval_res['ssim'] = ssim / (pred.shape[0] * pred.shape[1] * pred.shape[2])
+        ssim = 0
         for b in range(pred.shape[0]):
             for f in range(pred.shape[1]):
-                for c in range(pred.shape[2]):
-                    ssim += SSIM(pred[b, f, c], true[b, f, c])
-        eval_res['ssim'] = ssim / (pred.shape[0] * pred.shape[1] * pred.shape[2])
+                # TODO This should be changed to use the possible range of the data
+                range_est = pred[b, f].max() - true[b, f].min()
+                ssim += cal_ssim(pred[b, f], true[b, f], win_size=11, channel_axis=0, data_range=range_est, multichannel=True)
+        eval_res['ssim'] = ssim / (pred.shape[0] * pred.shape[1])
 
     if 'psnr' in metrics:
         psnr = 0

@@ -1,5 +1,3 @@
-from typing import Union
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,7 +8,7 @@ from openstl.models.fno_model import FNO_Model
 
 class FNOLSTMCell(nn.Module):
     '''
-    - Linear projection messes up the discretization invariance
+    - Single hybrid FNO-LSTM cell
     '''
     def __init__(self, fno_block_args: dict, in_channels: int, num_hidden: int, n_layers: int=1) -> None:
         super(FNOLSTMCell, self).__init__()
@@ -34,13 +32,10 @@ class FNOLSTMCell(nn.Module):
         x = torch.concat((x_t, h_t), dim=1)
 
         # Do the linear transformation
-        #ic(x_t.shape)
-        #ic(x.shape)
         x = self.LP(x)
 
         # FNO block
         fno_out = self.FNO_block(x)
-        #ic(fno_out.shape)
 
         # Pass the output of FNO block through tanh and add it to the last cell state    
         cell = self.tanh_gate(fno_out)
@@ -53,10 +48,6 @@ class FNOLSTMCell(nn.Module):
         h_t1 = F_t * self.tanh_gate(c_t1)
 
         # Return new states
-        #ic(c_t1.shape)
-        #ic(h_t1.shape)
-
-        #output = self.sigmoid_gate(h_t1)
 
         return c_t1, h_t1
     

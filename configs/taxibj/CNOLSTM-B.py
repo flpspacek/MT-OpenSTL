@@ -11,10 +11,10 @@ cno_block_args = {
 'in_dim': num_hidden,
 'out_dim': num_hidden,
 'size': (32, 32),
-'N_layers': 3,
+'N_layers': 4,
 'N_res': 4,
 'N_res_neck': 4,
-'channel_multiplier': 128,
+'channel_multiplier': 16,
 'use_bn': False,
 }
 # training

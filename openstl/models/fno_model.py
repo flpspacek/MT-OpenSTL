@@ -1,9 +1,7 @@
-import random
 from typing import Union, Optional
-from math import ceil
 
-import torch
 import numpy as np
+import torch
 import torch.nn.functional as F
 from torch import nn
 
@@ -53,25 +51,23 @@ class FNO_Model(nn.Module):
         self.use_self_attention = use_self_attention
         self.precision = 'mixed'
 
-        #ic(self.n_modes)
-
         self.lifting_channel_ratio = lifting_channel_ratio
         self.lifting_channels = lifting_channel_ratio * self.hidden_channels
         self.projection_channel_ratio = projection_channel_ratio
         self.projection_channels = projection_channel_ratio * self.hidden_channels
 
-        # Lift to higher dimension
+        # Learnable lifting layer
         self.lifting = ChannelMLP(in_channels=self.in_channels, out_channels=self.hidden_channels, hidden_channels=self.lifting_channels, n_layers=2, activation=self.activation)
-        # n_layers of intergral operators and activation functions
+        # n Fourier layers
         self.fourier_layers = nn.ModuleList([FNOBlock(model_type=self.model_type, n_modes=self.n_modes, hidden_channels=hidden_channels, n_layers=self.n_layers, activation=self.activation, channel_mlp_expansion=self.channel_mlp_expansion, channel_mlp_dropout=self.channel_mlp_dropout, precision=self.precision, use_self_attention=(self.use_self_attention and (i==n_layers-1))) for i in range(n_layers)])
-        # Back to target dimension
+        # Learnable projection layer
         self.projection = ChannelMLP(in_channels=self.hidden_channels, out_channels=self.out_channels, hidden_channels=self.projection_channels, n_layers=2, activation=self.activation)
 
     def forward(self, x: torch.Tensor, output_shape: Optional[tuple[int, ...]] = None) -> torch.Tensor:
         """
         - Expecting out_shape >= in_shape
         """
-        #ic('input:', x.shape)
+        # If the desired output resolution matches the input one, then no super-resolution isn't necessary
         if output_shape is None:
             out_shapes = self.n_layers * [None]
         # Calculate output shape for each layer so it gradually gets closer to the desired output shape
@@ -84,19 +80,15 @@ class FNO_Model(nn.Module):
             # Last shape have to match the final output shape
             out_shapes.append(output_shape)
 
-        ##ic(output_shape)
-        ##ic(out_shapes)
-        #ic('lifting')
+        # Lift the input to high dimensional workspace
         x = self.lifting(x)
-        #ic('lifted', x.shape)
 
+        # Sequence of consecutive mappings managed by parametrized Fourier layers
         for layer_idx in range(self.n_layers):
-            #ic('Fourier layer: ', layer_idx)
             x = self.fourier_layers[layer_idx](x, layer_idx, out_shapes[layer_idx])
-            ##ic(x.shape)
-        #ic('projection')
+
+        # Project the input back to its original dimension
         x = self.projection(x)
 
-        #ic('return', x.shape)
         return x
 

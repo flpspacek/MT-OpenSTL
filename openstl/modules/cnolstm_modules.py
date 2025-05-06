@@ -1,5 +1,3 @@
-from typing import Union
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,7 +8,7 @@ from openstl.models.cno_model import CNO_Model
 
 class CNOLSTMCell(nn.Module):
     '''
-    - Linear projection messes up the discretization invariance
+    - Single hybrid CNO-LSTM cell
     '''
     def __init__(self, cno_block_args: dict, in_channels: int, num_hidden: int, n_layers: int=1) -> None:
         super(CNOLSTMCell, self).__init__()

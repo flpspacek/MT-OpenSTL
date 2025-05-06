@@ -1,14 +1,9 @@
-import torch
 import torch.nn as nn
 from .base_method import Base_method
 from openstl.models.fno_model import FNO_Model
-from openstl.utils import schedule_sampling
 
 from torchmetrics import MetricCollection
 from torchmetrics.regression import MeanAbsoluteError, MeanSquaredError
-# torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio, LearnedPerceptualImagePatchSimilarity
-
-# TODO Add permutations to the input batches
 
 class FNO(Base_method):
     r"""
@@ -30,24 +25,20 @@ class FNO(Base_method):
         - Expects tensor of shape: batch_size, channels, temporal, spatial_1, spatial_2
         '''
         if 'output_shape' in kwargs:
-            #ic('AAAAAAAAAAAAAAAAAA')
             output_shape = kwargs['output_shape']
         else: 
             output_shape = None
         
-        #batch_x = batch_x.permute(0, 2, 1, 3, 4) 
         out = self.model(batch_x, output_shape)
 
         return out
 
     def training_step(self, batch, batch_idx, **kwargs):
         batch_x, batch_y = batch
-        #ic(batch_x.shape)
         batch_x = batch_x.permute(0, 2, 1, 3, 4)
         batch_y = batch_y.permute(0, 2, 1, 3, 4)
         output_shape = kwargs.get('output_shape', batch_y.shape[2:])
 
-        #ic(output_shape)
         out = self.model(batch_x, output_shape=output_shape)
         loss = self.criterion(out, batch_y)
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)

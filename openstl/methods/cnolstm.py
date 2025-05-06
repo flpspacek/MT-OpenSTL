@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from .base_method import Base_method
 from openstl.models.cnolstm_model import CNOLSTM_B_Model
-from openstl.utils import schedule_sampling
 
 from torchmetrics import MetricCollection
 from torchmetrics.regression import MeanAbsoluteError, MeanSquaredError
@@ -18,8 +17,6 @@ class CNOLSTM(Base_method):
         super().__init__(**kwargs)
     
     def _get_teacher_forcing_prob(self, current_epoch: int, total_epochs: int, initial_prob: float=1.0, final_prob: float=0.0, initial_epochs: int=5, final_epochs: int=5) -> float:
-        #ic(current_epoch)
-        #ic(type(current_epoch))
         if current_epoch < initial_epochs:
             return initial_prob
         if (total_epochs - current_epoch) < final_epochs:
@@ -61,7 +58,6 @@ class CNOLSTM(Base_method):
         batch_x = batch_x.permute(0, 2, 1, 3, 4)
         batch_y = batch_y.permute(0, 2, 1, 3, 4)
         len_y = batch_y.shape[2]
-        #ic(len_y)
         batch_in = torch.cat((batch_x, batch_y), axis=2)
    
         pred_y = self.model(batch_in, teacher_forcing_prob=0.0)

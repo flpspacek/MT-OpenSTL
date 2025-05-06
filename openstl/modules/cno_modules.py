@@ -12,18 +12,22 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class CNO2D_LReLu(nn.Module):
+    '''
+    - LReLu activation function for 2d tensors, with bicubic interpolation
+    '''
     def __init__(self,
                 in_size: tuple[int, int],
                 out_size: tuple[int, int]
-                ):
+                ) -> None:
         super(CNO2D_LReLu, self).__init__()
 
         self.in_size = in_size
         self.out_size = out_size
         self.act = nn.LeakyReLU()
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         x = F.interpolate(x, size = (2 * self.in_size[0], 2 * self.in_size[1]), mode = "bicubic", antialias = True)
         x = self.act(x)
         x = F.interpolate(x, size = (self.out_size[0], self.out_size[1]), mode = "bicubic", antialias = True)
@@ -95,7 +99,7 @@ class CNOBlock(nn.Module):
                 in_size,
                 out_size,
                 use_bn = True
-                ):
+                ) -> None:
         super(CNOBlock, self).__init__()
 
         self.in_channels = in_channels
@@ -119,7 +123,7 @@ class CNOBlock(nn.Module):
             self.batch_norm  = nn.Identity()
         self.act = CNO2D_LReLu(in_size = self.in_size, out_size = self.out_size) if dim == 2 else CNO3D_LReLu(in_size = self.in_size, out_size = self.out_size)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         x = self.convolution(x)
         x = self.batch_norm(x)
 
@@ -133,7 +137,7 @@ class LiftProjectBlock(nn.Module):
                 out_channels,
                 size,
                 latent_dim = 64
-                ):
+                ) -> None:
         super(LiftProjectBlock, self).__init__()
 
         self.inter_CNOBlock = CNOBlock(dim              = dim,
@@ -154,7 +158,7 @@ class LiftProjectBlock(nn.Module):
                                                padding      = 1)
 
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         x = self.inter_CNOBlock(x)
         x = self.convolution(x)
 
@@ -166,7 +170,7 @@ class ResidualBlock(nn.Module):
                 channels,
                 size,
                 use_bn = True
-                ):
+                ) -> None:
         super(ResidualBlock, self).__init__()
 
         self.channels = channels
@@ -201,7 +205,7 @@ class ResidualBlock(nn.Module):
 
         self.act = CNO2D_LReLu(in_size  = self.size, out_size = self.size) if dim == 2 else CNO3D_LReLu(in_size  = self.size, out_size = self.size)
         
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         out = self.convolution1(x)
         out = self.batch_norm1(out)
         out = self.act(out)
@@ -217,7 +221,7 @@ class ResNet(nn.Module):
                 size,
                 num_blocks,
                 use_bn = True
-                ):
+                ) -> None:
         super(ResNet, self).__init__()
 
         self.channels = channels
@@ -233,7 +237,7 @@ class ResNet(nn.Module):
 
         self.res_nets = torch.nn.Sequential(*self.res_nets)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         for i in range(self.num_blocks):
             x = self.res_nets[i](x)
 

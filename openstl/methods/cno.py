@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from .base_method import Base_method
 from openstl.models import CNO_Model
@@ -38,9 +37,6 @@ class CNO(Base_method):
 
         out = self.model(batch_x)
 
-        #ic(out.shape)
-        #ic(batch_y.shape)
-
         loss = self.criterion(out, batch_y)
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
 
@@ -65,11 +61,6 @@ class CNO(Base_method):
         self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=False)
 
     def test_step(self, batch, batch_idx):
-        #ic(type(batch))
-        #ic(len(batch))
-        #(ic(batch[0].shape))
-        #(ic(batch[1].shape))
-
         batch_x, batch_y = batch[0], batch[1] # B, T, C, S1, S2
         batch_x = batch_x.permute(0, 2, 1, 3, 4) # B, C, T, S1, S2
         batch_y = batch_y.permute(0, 2, 1, 3, 4) # B, C, T, S1, S2

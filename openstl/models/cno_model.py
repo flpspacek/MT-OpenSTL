@@ -5,16 +5,13 @@ from math import ceil
 
 import torch
 import torch.nn as nn
-import os
-import numpy as np
-import torch.nn.functional as F
 
 from openstl.modules import CNOBlock, LiftProjectBlock, ResNet
 
     
 class CNO_Model(nn.Module):
     '''
-    - Assumes equal size of spatial dimensions
+    - 
     '''
 
     def __init__(self,
@@ -64,7 +61,6 @@ class CNO_Model(nn.Module):
             self.encoder_sizes.append(tuple(en_size))
             dec_size = [ceil(dim_size / 2 ** (self.N_layers - i)) for dim_size in size]
             self.decoder_sizes.append(tuple(dec_size))
-        #ic(self.encoder_sizes)
 
         ######## Define Lift and Project blocks ########
 
@@ -135,7 +131,7 @@ class CNO_Model(nn.Module):
 
     def forward(self, x):
                 
-        x = self.lift(x) #Execute Lift
+        x = self.lift(x) # Execute Lift
         skip = []
        
         # Execute Encoder

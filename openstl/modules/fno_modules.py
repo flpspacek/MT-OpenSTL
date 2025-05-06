@@ -7,20 +7,8 @@ import torch.nn.functional as F
 from torch import nn
 from typing import Union
 
-from icecream import ic
-
-# TODO
-# - Add bias ??
-# - Testing
-# - Redundant parameters from last FFT
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-
 class LinearSelfAttention(nn.Module):
-    def __init__(self, embed_dim: int, k: int=32, delta: float=0.1):
+    def __init__(self, embed_dim: int, k: int=32, delta: float=0.1) -> None:
         super(LinearSelfAttention, self).__init__()
         self.embed_dim = embed_dim
         self.delta = delta
@@ -35,7 +23,7 @@ class LinearSelfAttention(nn.Module):
         self.register_buffer('P1', None)
         self.register_buffer('P2', None)
 
-    def _initialize_projection_matrices(self, n):
+    def _initialize_projection_matrices(self, n) -> None:
             """
             Initialize projection matrices P1 and P2 if not already initialized
             Args:
@@ -49,7 +37,7 @@ class LinearSelfAttention(nn.Module):
                 self.P1 = self.delta * R
                 self.P2 = torch.exp(-self.delta * R)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         """
         x: (batch_size, seq_len, embed_dim)
         Returns: (batch_size, seq_len, embed_dim)
@@ -76,14 +64,12 @@ class LinearSelfAttention(nn.Module):
         P2 = self.P2.to(x.device)
         
         # Projected key and value: [B, C, k]
-        K_projected = torch.matmul(K, P1.t())  # EKWg
-        V_projected = torch.matmul(V, P2.t())  # FVWh
+        K_projected = torch.matmul(K, P1.t())  
+        V_projected = torch.matmul(V, P2.t())
         
         scale = torch.sqrt(torch.tensor(self.embed_dim, dtype=torch.float32))
         attention_scores = torch.matmul(Q.permute((0, 2, 1)), K_projected) / scale  # [B, N, k]
         
-        #ic(x.shape)
-        #ic(attention_scores.shape)
         # Apply softmax
         attention_weights = F.softmax(attention_scores, dim=-1)
         
@@ -108,9 +94,6 @@ class SpectralConv(nn.Module):
     def __init__(self, channels: int, n_modes: Union[int, tuple[int, ...]], precision='full') -> None:
         super(SpectralConv, self).__init__()
 
-        #self.in_channels = channels
-        #self.out_channels = channels # TODO
-
         # Precision
         self.fno_block_precision = precision
 
@@ -123,18 +106,13 @@ class SpectralConv(nn.Module):
         # Initialize the weight matrix
         init_std = (1 / (channels))**0.5
         self.R = torch.normal(0, init_std, R_shape, dtype=torch.cfloat)
-        # TODO Param or not??
         self.R = nn.Parameter(self.R)
-        #ic(n_modes)
-        #ic(self.n_modes)
-        #ic(R_shape)
+
 
     def _contract(self, x: torch.Tensor, R: torch.Tensor):
         """
         - Assuming in_channels == out_channels
         """
-        #ic(x.shape)
-        #ic(R.shape)
         return x * R
 
     @staticmethod
@@ -184,7 +162,6 @@ class SpectralConv(nn.Module):
         - Expected shape: (batch, ...)
         """
         _, _, *mode_sizes = x.shape
-        #fft_size = list(mode_sizes)
         fft_dims = list(range(-self.order, 0))
 
         if self.fno_block_precision == "half":
@@ -206,11 +183,9 @@ class SpectralConv(nn.Module):
         rel_modes = x[slices_x]
 
         # Multiply relevant Fourier modes
-        #ic(x.shape)
         out_fft = self._contract(rel_modes, self.R)
 
         # Change number mode_sizes to match the output shape
-        #ic(output_shape)
         if output_shape is not None:
             mode_sizes = output_shape
 
@@ -219,15 +194,14 @@ class SpectralConv(nn.Module):
 
         # Return to physical space
         x = torch.fft.irfftn(out_fft, s=mode_sizes, dim=fft_dims, norm="forward")
-        #ic(x.shape)
         return x
     
     @property
-    def n_modes(self):
+    def n_modes(self) -> list[int]:
         return self._n_modes
     
     @n_modes.setter
-    def n_modes(self, n_modes):
+    def n_modes(self, n_modes) -> None:
         if isinstance(n_modes, int): # Should happen for 1D FNO only
             n_modes = [n_modes]
         else:
@@ -241,7 +215,7 @@ class SpectralConv(nn.Module):
 
 class FNOBlock(nn.Module):
     """
-    -
+    - Encapsules single FNO layer
     """
 
     def __init__(self,
@@ -310,6 +284,8 @@ class FNOBlock(nn.Module):
 
 class ChannelMLP(nn.Module):
     """
+    - Used as a Lift/Project block
+    - Used as an optional MLP block after spectral convolution 
     """
 
     def __init__(self, in_channels: int, out_channels: int, hidden_channels: int=None, n_layers: int=2, activation: nn.Module = F.gelu, dropout: float = 0.0) -> None:
@@ -343,16 +319,11 @@ class ChannelMLP(nn.Module):
         reshaped = False
         shape = x.shape
 
-        #ic(shape)
-
         if x.ndim > 3:
             x = x.reshape((shape[0], shape[1], -1))
             reshaped = True
-        
-        #ic('Reshaped', x.shape)
 
         for i, layer in enumerate(self.nn):
-            #ic(layer)
             x = layer(x)
             if i < self.n_layers - 1:
                 x = self.activation(x)
